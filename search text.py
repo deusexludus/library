@@ -1,5 +1,4 @@
 '''
-Bruce Dunn 
 Python 3.7
 Searches an array of filenames for an array of strings and prints a message if a match is found.
 bytearrays are used so only works for ASCII files
