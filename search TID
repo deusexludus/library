@@ -1,0 +1,57 @@
+import os
+from pandas import DataFrame
+import re
+
+class Duration_Search():
+    res = {}
+    manual_checks = []
+    tID_text = "<TR><TD><FONT SIZE=1><B>TestId</B></FONT></TD><TD COLSPAN=2><FONT SIZE=1><B>"
+    duration_text = "Test Duration </FONT></TD><TD COLSPAN=3><FONT SIZE=1>"
+
+    def walk_through_dir(self):
+        for subdir, dirs, files in os.walk('C:\\Users\\H116099\\Documents\\archive\\python\\TID duration finder'):
+            #print('Found subdirectory: %s' % subdir)
+            #print('Found folders here: %s' % dirs)
+            for file in files:
+                filepath = subdir + os.sep + file
+                #print('checking',filepath)
+                if filepath.endswith(".htm"):
+                    self.build_duration_from_file(filepath)
+
+    def build_duration_from_file(self, filepath):
+        skipping = 0
+        for i, line in enumerate(open(filepath)):
+            for match in re.finditer(self.tID_text, line):
+                if match:
+                    TID_end = line.find('&',76, len(line))
+                    TID = line[76:TID_end]
+                    skipping = 1
+                    print(f'found TID {TID} on line {i}')
+            if skipping == 6:
+                assert(re.finditer(self.duration_text, line))
+                end = line.find('&', 77, len(line))
+                duration = line[77:end]
+                skipping = 0
+                print(f'found Duration: {duration} on line {i}')
+                try:
+                    previous = self.res[TID]
+                    if abs(duration - previous)/duration < .1: #within 10%, take higher
+                        self.res[TID] = max(self.res[TID], duration)
+                    else:
+                        self.manual_checks.append(TID)
+                except KeyError:
+                    self.res[TID] = duration
+            elif skipping:
+                skipping += 1
+        print('printing res:', self.res)
+
+    def output_to_excel(self):
+        df_res = DataFrame({'TID': self.res.keys(), 'Duration': self.res.values()})
+        df_res.to_excel('TIDs.xlsx', sheet_name='TIDs', index=False)
+        if self.manual_checks:
+            df_man = DataFrame({'TID': manual_checks, 'Check Manually?': 'Yes'})
+            df_man.to_excel('TIDs.xlsx', sheet_name='Manual', index=False)
+
+d = Duration_Search()
+d.walk_through_dir()
+d.output_to_excel()
