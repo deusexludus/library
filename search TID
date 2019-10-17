@@ -5,6 +5,7 @@ import re
 class Duration_Search():
     res = {}
     manual_checks = []
+    debug = []
     tID_text = "<TR><TD><FONT SIZE=1><B>TestId</B></FONT></TD><TD COLSPAN=2><FONT SIZE=1><B>"
     duration_text = "Test Duration </FONT></TD><TD COLSPAN=3><FONT SIZE=1>"
 
@@ -16,33 +17,37 @@ class Duration_Search():
                 filepath = subdir + os.sep + file
                 #print('checking',filepath)
                 if filepath.endswith(".htm"):
-                    self.build_duration_from_file(filepath)
+                    self.build_duration_from_file(filepath, file)
 
-    def build_duration_from_file(self, filepath):
+    def build_duration_from_file(self, filepath, file):
         skipping = 0
         for i, line in enumerate(open(filepath)):
             for match in re.finditer(self.tID_text, line):
                 if match:
                     TID_end = line.find('&',76, len(line))
-                    TID = line[76:TID_end]
+                    TID = int(line[76:TID_end])
                     skipping = 1
                     #print(f'found TID {TID} on line {i}')
             if skipping == 6:
-                assert(re.finditer(self.duration_text, line))
+                #assert(re.finditer(self.duration_text, line), 'no duration found')
                 end = line.find('&', 77, len(line))
-                duration = line[77:end]
+                duration = int(line[77:end])
                 skipping = 0
+                if duration == 0: #test skipped
+                    continue
                 #print(f'found Duration: {duration} on line {i}')
                 try:
                     previous = self.res[TID]
-                    if abs(int(duration) - int(previous))/int(duration) < .1: #within 10%, take higher
-                        self.res[TID] = max(int(self.res[TID]), int(duration))
+                    if abs(duration - previous)/duration < .1: #within 10%, take higher
+                        #print('passed if')
+                        self.res[TID] = max(previous, duration)
                     else:
-                        self.manual_checks.append(TID)
+                        #print('starting else')
+                        self.manual_checks.append((file, TID, duration, duration - previous))
                 except KeyError:
                     self.res[TID] = duration
                 except TypeError:
-                    print('TypeError')
+                    print('TypeError', file, TID, duration)
                 except ZeroDivisionError:
                     print('zero divison, check fp, i, line {filepath} {i} {line} duration was 0 because it was skipped')
             elif skipping:
@@ -56,10 +61,20 @@ class Duration_Search():
         new_path = output_path + subdir + '.xlsx'
         print(new_path)
         writer = pandas.ExcelWriter(new_path, engine = 'openpyxl')
-        df_res = pandas.DataFrame({'TID': list(map(int, self.res.keys())), 'Duration': list(map(int, self.res.values()))})
+        out_k, out_v = [], []
+        for k in sorted(self.res):
+            out_k.append(k)
+            out_v.append(self.res[k])
+        df_res = pandas.DataFrame({'TID': out_k, 'Duration': out_v})
         df_res.to_excel(writer, sheet_name = 'Durations')
         if self.manual_checks:
-            df_man = pandas.DataFrame({'TID': self.manual_checks, 'Check Manually?': 'Yes'})
+            m_1, m_2, m_3, m_4 = [], [], [], []
+            for i in range(len(self.manual_checks)):
+                m_1.append(self.manual_checks[i][0])
+                m_2.append(self.manual_checks[i][1])
+                m_3.append(self.manual_checks[i][2])
+                m_4.append(self.manual_checks[i][3])
+            df_man = pandas.DataFrame({'Filename': m_1, 'TID': m_2, 'duration': m_3, 'difference from previous result': m_4})
             df_man.to_excel(writer, sheet_name = 'Manual Checks')
         writer.save()
         writer.close()
@@ -67,7 +82,8 @@ class Duration_Search():
         
 
 d = Duration_Search()
-input_path = r'I:\Bruce\common emb 19\Duration\ARINC_Discretes'
+input_path = r'L:\Bruce\common emb 19\Duration\Signal_Selection\Consolidated'
 output_path = 'C:\\Users\\H116099\\'
+print('starting')
 d.walk_through_dir()
 d.output_to_excel()
