@@ -16,13 +16,24 @@ class Results_Search():
                 filepath = subdir + os.sep + file
                 #print('checking',filepath)
                 if filepath.endswith(".htm"):
+                    #add check that this is actually a results file
                     self.build_result_from_file(filepath, file)
 
     def build_result_from_file(self, filepath, file):
         skipping = 0
         result = "None"
-        if file in self.res_by_file.keys():
-            file = file + '_dupe'
+        file = file[:len(file)-4]
+        if len(file) > 31:
+            print(f'{file} is too long, {len(file)} chars')
+            file = '_trimmed_' + file[17:39]
+        tmp = 0
+        while True:
+            tmp += 1
+            if file in self.res_by_file.keys():
+                file = file[:28] + '_' + str(tmp)
+                print(f'new filename is {file}')
+            else:
+                break
         self.res_by_file[file] = []
         for i, line in enumerate(open(filepath)):
             for match in re.finditer(self.tID_text, line):
@@ -62,7 +73,7 @@ class Results_Search():
         for k in sorted(self.overall_res):
             out_k.append(k)
             out_v.append(self.overall_res[k])
-        df_res = pandas.DataFrame({'TID': out_k, 'Duration': out_v})
+        df_res = pandas.DataFrame({'TID': out_k, 'Result': out_v})
         df_res.to_excel(writer, sheet_name = 'Overall Results by TID')
         for file in self.res_by_file.keys():
             tID, result = [], []
@@ -79,7 +90,7 @@ class Results_Search():
         
 
 r = Results_Search()
-input_path = r'L:\Bruce\common emb 19\archive of TM\TM dry runs\Post RCN'
+input_path = r'I:\Bruce\common emb 19\archive of TM\TM dry runs\Post RCN'
 output_path = 'C:\\Temp\\'
 print(f'running {input_path}')
 r.walk_through_dir()
