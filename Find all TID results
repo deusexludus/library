@@ -1,0 +1,86 @@
+import os
+import pandas
+import re
+
+class Results_Search():
+    def __init__(self):
+        self.overall_res = {}
+        self.res_by_file = {}
+        self.tID_text = "<TR><TD><FONT SIZE=1><B>TestId</B></FONT></TD><TD COLSPAN=2><FONT SIZE=1><B>"
+        
+    def walk_through_dir(self):
+        for subdir, dirs, files in os.walk(input_path):
+            #print('Found subdirectory: %s' % subdir)
+            #print('Found folders here: %s' % dirs)
+            for file in files:
+                filepath = subdir + os.sep + file
+                #print('checking',filepath)
+                if filepath.endswith(".htm"):
+                    self.build_result_from_file(filepath, file)
+
+    def build_result_from_file(self, filepath, file):
+        skipping = 0
+        result = "None"
+        if file in self.res_by_file.keys():
+            file = file + '_dupe'
+        self.res_by_file[file] = []
+        for i, line in enumerate(open(filepath)):
+            for match in re.finditer(self.tID_text, line):
+                if match:
+                    tID_end = line.find('&',76, len(line))
+                    tID = int(line[76:tID_end])
+                    skipping = 1
+                    #print(f'found TID {tID} on line {i}')
+            if skipping == 7:
+                beg = line.find('COLOR=#', 20, len(line))
+                code = line[beg + 7:beg + 10]
+                skipping = 0
+                if code == "00C":
+                    result = "PASS"
+                elif code == "FF0":
+                    result = "FAIL"
+                elif code == "000":
+                    result = "SKIPPED"
+                else:
+                    print(f'Result: {code} didn\'t match Pass/Fail/Skipped {file}, {line}')
+                self.res_by_file[file].append((tID, result))
+                if result == "SKIPPED":
+                    continue
+                if tID in self.overall_res.keys() and self.overall_res[tID] != result:
+                    self.overall_res[tID] = 'Results Mixed'
+                else:
+                    self.overall_res[tID] = result
+            elif skipping:
+                skipping += 1
+
+    def output_to_excel(self):
+        subdir_start = input_path[::-1].find('\\')
+        subdir = input_path[(len(input_path) - subdir_start):]
+        new_path = output_path + subdir + '.xlsx'
+        writer = pandas.ExcelWriter(new_path, engine = 'openpyxl')
+        out_k, out_v = [], []
+        for k in sorted(self.overall_res):
+            out_k.append(k)
+            out_v.append(self.overall_res[k])
+        df_res = pandas.DataFrame({'TID': out_k, 'Duration': out_v})
+        df_res.to_excel(writer, sheet_name = 'Overall Results by TID')
+        for file in self.res_by_file.keys():
+            tID, result = [], []
+            for i in range(len(self.res_by_file[file])):
+                tID.append(self.res_by_file[file][i][0])
+                result.append(self.res_by_file[file][i][1])
+            df_file = pandas.DataFrame({'TID': tID, 'Result': result})
+            df_file.to_excel(writer, sheet_name = file)
+        
+        writer.save()
+        writer.close()
+        print(f'done, {new_path}')
+        
+        
+
+r = Results_Search()
+input_path = r'L:\Bruce\common emb 19\archive of TM\TM dry runs\Post RCN'
+output_path = 'C:\\Temp\\'
+print(f'running {input_path}')
+r.walk_through_dir()
+r.output_to_excel()
