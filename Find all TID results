@@ -1,20 +1,24 @@
 import os
+import os
 import pandas
 import re
+import tkinter
+from tkinter import messagebox
 
 class Results_Search():
     def __init__(self):
         self.overall_res = {}
         self.res_by_file = {}
         self.tID_text = "<TR><TD><FONT SIZE=1><B>TestId</B></FONT></TD><TD COLSPAN=2><FONT SIZE=1><B>"
+
         
-    def walk_through_dir(self):
+    def walk_through_dir(self, input_path):
         for subdir, dirs, files in os.walk(input_path):
             #print('Found subdirectory: %s' % subdir)
             #print('Found folders here: %s' % dirs)
             for file in files:
                 filepath = subdir + os.sep + file
-                #print('checking',filepath)
+                s.set('checking' + filepath)
                 if filepath.endswith(".htm"):
                     #add check that this is actually a results file
                     self.build_result_from_file(filepath, file)
@@ -24,14 +28,12 @@ class Results_Search():
         result = "None"
         file = file[:len(file)-4]
         if len(file) > 31:
-            print(f'{file} is too long, {len(file)} chars')
             file = '_trimmed_' + file[17:39]
         tmp = 0
         while True:
             tmp += 1
             if file in self.res_by_file.keys():
                 file = file[:28] + '_' + str(tmp)
-                print(f'new filename is {file}')
             else:
                 break
         self.res_by_file[file] = []
@@ -64,34 +66,77 @@ class Results_Search():
             elif skipping:
                 skipping += 1
 
-    def output_to_excel(self):
+    def output_to_excel(self, input_path):
         subdir_start = input_path[::-1].find('\\')
         subdir = input_path[(len(input_path) - subdir_start):]
         new_path = output_path + subdir + '.xlsx'
-        writer = pandas.ExcelWriter(new_path, engine = 'openpyxl')
-        out_k, out_v = [], []
-        for k in sorted(self.overall_res):
-            out_k.append(k)
-            out_v.append(self.overall_res[k])
-        df_res = pandas.DataFrame({'TID': out_k, 'Result': out_v})
-        df_res.to_excel(writer, sheet_name = 'Overall Results by TID')
-        for file in self.res_by_file.keys():
-            tID, result = [], []
-            for i in range(len(self.res_by_file[file])):
-                tID.append(self.res_by_file[file][i][0])
-                result.append(self.res_by_file[file][i][1])
-            df_file = pandas.DataFrame({'TID': tID, 'Result': result})
-            df_file.to_excel(writer, sheet_name = file)
+        try:
+            writer = pandas.ExcelWriter(new_path, engine = 'openpyxl')
+            out_k, out_v = [], []
+            for k in sorted(self.overall_res):
+                out_k.append(k)
+                out_v.append(self.overall_res[k])
+            df_res = pandas.DataFrame({'TID': out_k, 'Result': out_v})
+            df_res.to_excel(writer, sheet_name = 'Overall Results by TID')
+            for file in self.res_by_file.keys():
+                tID, result = [], []
+                for i in range(len(self.res_by_file[file])):
+                    tID.append(self.res_by_file[file][i][0])
+                    result.append(self.res_by_file[file][i][1])
+                df_file = pandas.DataFrame({'TID': tID, 'Result': result})
+                df_file.to_excel(writer, sheet_name = file)
+            
+            writer.save()
+            writer.close()
+            s.set(f'Done! Created {new_path}')
+        except PermissionError as e:
+            s.set(f'Close the excel file before regenerating! {e}')
+        except Exception as e:
+            s.set(e)
         
-        writer.save()
-        writer.close()
-        print(f'done, {new_path}')
         
         
 
 r = Results_Search()
-input_path = r'I:\Bruce\common emb 19\archive of TM\TM dry runs\Post RCN'
+#input_path = r'I:\Bruce\common emb 19\archive of TM\TM dry runs\Post RCN'
 output_path = 'C:\\Temp\\'
-print(f'running {input_path}')
-r.walk_through_dir()
-r.output_to_excel()
+#r.walk_through_dir()
+#r.output_to_excel()
+
+
+
+
+about_info = ("Searches a given folder and all subdirectories for .htm results "
+            "files and outputs to C:\\Temp\\<root folder name>.xlsx.\n\nBruce Dunn 2019")
+status = ("Paste root folder into Entry box and click Parse Folder")
+
+def message():
+    mb1 = messagebox.showinfo("About", about_info)
+
+def run():
+    input_path = r"{}".format(e1.get())
+    s.set('Analyzing ' + input_path)
+    r.walk_through_dir(input_path)
+    s.set('building output file')
+    r.output_to_excel(input_path)
+
+m = tkinter.Tk()
+m.title('Parse Results Files')
+l1 = tkinter.Label(m, text = 'Root Folder')
+l2 = tkinter.Label(m, text = 'Status:')
+s = tkinter.StringVar()
+l3 = tkinter.Label(m, textvariable = s)
+s.set("Paste root folder into Entry box and click Parse Folder")
+e1 = tkinter.Entry(m, width = 100, borderwidth = 5)
+b1 = tkinter.Button(m, text = 'Parse Folder', width = 25, command = run)
+b2 = tkinter.Button(m, text = 'How to use', width = 25, command = message)
+
+l1.grid(row = 0)
+l2.grid(row = 1)
+l3.grid(row = 1, column = 1)
+e1.grid(row = 0, column = 1)
+b1.grid(row = 0, column = 2, padx = 25, pady = 10)
+b2.grid(row = 2, padx = 50, pady = 20)
+
+m.mainloop()
+
