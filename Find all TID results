@@ -10,6 +10,7 @@ class Results_Search():
         self.overall_res = {}
         self.res_by_file = {}
         self.tID_text = "<TR><TD><FONT SIZE=1><B>TestId</B></FONT></TD><TD COLSPAN=2><FONT SIZE=1><B>"
+        self.resfile_header = r'<TABLE BORDER="0" CELLPADDING="1" CELLSPACING="2" BGCOLOR="#F5F5F5">'
 
         
     def walk_through_dir(self, input_path):
@@ -20,7 +21,6 @@ class Results_Search():
                 filepath = subdir + os.sep + file
                 s.set('checking' + filepath)
                 if filepath.endswith(".htm"):
-                    #add check that this is actually a results file
                     self.build_result_from_file(filepath, file)
 
     def build_result_from_file(self, filepath, file):
@@ -37,7 +37,9 @@ class Results_Search():
             else:
                 break
         self.res_by_file[file] = []
-        for i, line in enumerate(open(filepath)):
+        for i, line in enumerate(open(filepath)): 
+            if i == 4 and line[:-1] != self.resfile_header: #skip htm files that are not res files
+                break
             for match in re.finditer(self.tID_text, line):
                 if match:
                     tID_end = line.find('&',76, len(line))
