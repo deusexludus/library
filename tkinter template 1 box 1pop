@@ -1,0 +1,26 @@
+import tkinter
+from tkinter import messagebox
+
+about_info = ("Searches a given folder and all subdirectories for .htm results "
+            "files and outputs to C:\\Temp\\<root folder name>.xlsx.\n\nBruce Dunn 2019")
+
+def message():
+    mb1 = messagebox.showinfo("About", about_info)
+
+def foo():
+    #function
+
+m = tkinter.Tk()
+m.title('Parse Results Files')
+l1 = tkinter.Label(m, text='Root Folder')
+e1 = tkinter.Entry(m, width = 100, borderwidth = 5)
+b1 = tkinter.Button(m, text = 'Parse Folder', width = 25, command = foo)
+b2 = tkinter.Button(m, text = 'How to use', width = 25, command = message)
+
+l1.grid(row = 0)
+e1.grid(row = 0, column = 1)
+b1.grid(row = 0, column = 2, padx = 25, pady = 10)
+b2.grid(row = 2, padx = 50, pady = 20)
+
+m.mainloop()
+
