@@ -1,10 +1,18 @@
-import os
-import os
-import pandas
-import re
-import tkinter
+#.exe launches command prompt then disappears, no tkinter gui - add tkinter to lib? 
+#enter the following at a command prompt in the pythonpath folder
+#python -m nuitka --standalone --mingw64 --show-progress --show-scons --plugin-enable=tk-inter --plugin-enable=numpy=maplotlib temp1.py
+from os import walk
+from os import sep
+from pandas import ExcelWriter
+from pandas import DataFrame
+from re import finditer
+from tkinter import Tk
+from tkinter import Label
+from tkinter import StringVar
+from tkinter import Button
+from tkinter import Entry
 from tkinter import messagebox
-import threading
+#import threading
 
 class Results_Search(object):
     def __init__(self):
@@ -13,12 +21,12 @@ class Results_Search(object):
         self.tID_text = "<TR><TD><FONT SIZE=1><B>TestId</B></FONT></TD><TD COLSPAN=2><FONT SIZE=1><B>"
         self.resfile_header = r'<TABLE BORDER="0" CELLPADDING="1" CELLSPACING="2" BGCOLOR="#F5F5F5">'
         
-    def walk_through_dir(self, input_path):
-        for subdir, dirs, files in os.walk(input_path):
+    def walk_through_dir(self, input_path, g):
+        for subdir, dirs, files in walk(input_path):
             #print('Found subdirectory: %s' % subdir)
             #print('Found folders here: %s' % dirs)
             for file in files:
-                filepath = subdir + os.sep + file
+                filepath = subdir + sep + file
                 g.update_s(g.s, 'checking' + filepath)
                 if filepath.endswith(".htm"):
                     self.build_result_from_file(filepath, file)
@@ -40,7 +48,7 @@ class Results_Search(object):
         for i, line in enumerate(open(filepath)): 
             if i == 4 and line[:-1] != self.resfile_header: #skip htm files that are not res files
                 break
-            for match in re.finditer(self.tID_text, line):
+            for match in finditer(self.tID_text, line):
                 if match:
                     tID_end = line.find('&',76, len(line))
                     tID = int(line[76:tID_end])
@@ -73,19 +81,19 @@ class Results_Search(object):
         subdir = input_path[(len(input_path) - subdir_start):]
         new_path = 'C:\\Temp\\' + subdir + '.xlsx'
         try:
-            writer = pandas.ExcelWriter(new_path, engine = 'openpyxl')
+            writer = ExcelWriter(new_path, engine = 'openpyxl')
             out_k, out_v = [], []
             for k in sorted(self.overall_res):
                 out_k.append(k)
                 out_v.append(self.overall_res[k])
-            df_res = pandas.DataFrame({'TID': out_k, 'Result': out_v})
+            df_res = DataFrame({'TID': out_k, 'Result': out_v})
             df_res.to_excel(writer, sheet_name = 'Overall Results by TID')
             for file in self.res_by_file.keys():
                 tID, result = [], []
                 for i in range(len(self.res_by_file[file])):
                     tID.append(self.res_by_file[file][i][0])
                     result.append(self.res_by_file[file][i][1])
-                df_file = pandas.DataFrame({'TID': tID, 'Result': result})
+                df_file = DataFrame({'TID': tID, 'Result': result})
                 df_file.to_excel(writer, sheet_name = file)
             writer.save()
             writer.close()
@@ -106,26 +114,27 @@ class GUI(object):
         mb1 = messagebox.showinfo("About", self.about_info)
 
     def run(self):
+        r = Results_Search()
         input_path = r"{}".format(self.e1.get())
         self.update_s(self.s, 'Analyzing ' + input_path)
-        r.walk_through_dir(input_path)
+        r.walk_through_dir(input_path, self)
         self.update_s(self.s, 'building output file')
-        r.output_to_excel(g, input_path)
+        r.output_to_excel(self, input_path)
 
     def update_s(self, stringvar, text):
         stringvar.set(text)
 
     def draw(self):
-        m = tkinter.Tk()
+        m = Tk()
         m.title('Parse Results Files')
-        self.s = tkinter.StringVar()
-        l1 = tkinter.Label(m, text = 'Root Folder')
-        l2 = tkinter.Label(m, text = 'Status:')       
-        l3 = tkinter.Label(m, textvariable = self.s)
+        self.s = StringVar()
+        l1 = Label(m, text = 'Root Folder')
+        l2 = Label(m, text = 'Status:')       
+        l3 = Label(m, textvariable = self.s)
         self.update_s(self.s, "Paste root folder into Entry box and click Parse Folder")
-        self.e1 = tkinter.Entry(m, width = 100, borderwidth = 5)
-        b1 = tkinter.Button(m, text = 'Parse Folder', width = 25, command = self.run)
-        b2 = tkinter.Button(m, text = 'How to use', width = 25, command = self.message)
+        self.e1 = Entry(m, width = 100, borderwidth = 5)
+        b1 = Button(m, text = 'Parse Folder', width = 25, command = self.run)
+        b2 = Button(m, text = 'How to use', width = 25, command = self.message)
 
         l1.grid(row = 0)
         l2.grid(row = 1)
@@ -136,9 +145,13 @@ class GUI(object):
 
         m.mainloop()
 
-r = Results_Search()
-g = GUI()
-g.draw()
+def main():
+    g = GUI()
+    g.draw()
+    
+if __name__ == "__main__":
+    main()
+
 #input_path = r'I:\Bruce\common emb 19\archive of TM\TM dry runs\Post RCN'
 #output_path = 'C:\\Temp\\'
 #r.walk_through_dir()
