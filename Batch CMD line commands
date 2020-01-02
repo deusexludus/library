@@ -1,0 +1,65 @@
+import os
+import xlrd
+import time
+'''
+properly formatted command:
+os.system('\"\"C:\\Program Files (x86)\\Beyond Compare 3\\BCompare.exe\" \"@C:\\Users\\dunnbrur\\Documents\\task 340\\BC_script.txt\" \"C:\\Users\\dunnbrur\\Documents\\task 340\\zips from Colin\\all black label scripts\\737AEWC_ecs_s_5_2_2_t47.bat\" \"C:\\Users\\dunnbrur\\Documents\\task 340\\zips from Colin\\all red label scripts\\737AEWC_ecs_s_5_2_2_t47.bat\" \"C:\\Users\\dunnbrur\\Documents\\task 340\\first compare outputs\\737AEWC_ecs_s_5_2_2_t47_diff.txt\"')
+'''
+#read column of commands from a spreadsheet and if the necessary files exist, runs the command in dos, outputs text file of results by row
+def createDiffs():
+	print('file open')
+	textoutput = []
+	workbook = xlrd.open_workbook(r'C:\Users\dunnbrur\Documents\task 340\filtered bat files.xlsx')
+	worksheet = workbook.sheet_by_name('commands')
+	print('sheet open')
+	r = 1 #there is a title row
+	a = worksheet.cell(r, 0).value
+	b = worksheet.cell(r, 1).value
+	c = worksheet.cell(r, 2).value
+	d = worksheet.cell(r, 3).value
+	e = worksheet.cell(r, 4).value
+	while d:
+		if os.path.exists(a):
+			if os.path.exists(b):
+				os.system('\"' + d)
+				time.sleep(1) #don't want to confuse beyondcompare
+				if os.path.exists(c):
+					with open(c, 'r') as diff_file:
+						data = diff_file.readlines()
+					data[45] = "Left File: " + a[84:] + " Version: 1.0" + "\n"
+					data[47] = "Right File: " + a[84:] + " Version: " + str(e) + "\n"
+					diff_file.close()
+					with open(c, 'w') as file:
+						file.writelines(data)
+					file.close()
+					textoutput.append('found')
+				else:
+					textoutput.append('ERROR! found files but diff not created')
+			else:
+				textoutput.append(f'missing {b}')
+		elif os.path.exists(b):
+			textoutput.append(f'missing {a}')
+		else:
+			textoutput.append('missing both')
+		r += 1
+		try:
+			a = worksheet.cell(r, 0).value
+			b = worksheet.cell(r, 1).value
+			c = worksheet.cell(r, 2).value
+			d = worksheet.cell(r, 3).value
+			e = worksheet.cell(r, 4).value
+		except:
+			break
+		print(f'finished row {r}')
+	print(f'textoutput:{textoutput}')
+	with open(r'C:\Users\dunnbrur\Documents\task 340\script output files not found.txt', 'w') as f:
+		for l in textoutput:
+			print(l)
+			f.writelines(l + "\n")
+	f.close()
+	
+def main():
+	print('starting')
+	createDiffs()
+	print('finished')
+main()
