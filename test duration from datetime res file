@@ -1,0 +1,35 @@
+import os
+import datetime
+print('starting')
+#handle multiple entries?
+
+d = {}
+directory = input('Enter the directory of the results:\n')
+
+#walks through a directory (including subdirectories) and when it finds a .res file it records the test duration.
+#outputs an error if it cannot parse the .res file.
+for filename in os.listdir(directory):
+    if filename.endswith(".res"):
+        filename_path = os.path.join(directory, filename)
+        f = open(filename_path, "r")
+        lines = f.readlines()
+        f.close()
+        try:
+            start_str = lines[3][18:37]
+            end_str = lines[-1][21:43]
+            start = datetime.datetime.strptime(start_str,'%a %b %d %H:%M:%S')
+            end = datetime.datetime.strptime(end_str,'%a %b %d %I:%M:%S %p')
+            duration = int((end-start).total_seconds())
+            d[filename[:-4]] = duration
+        except:
+            print(f'unable to read{filename_path}')
+            d[filename[:-4]] = '??? Unable to read res file'
+        
+output_filename = directory + '\\execution_times.txt'
+
+#write results to a txt file
+with open(output_filename, 'w') as f:
+    f.writelines('script\tduration(sec)\n')
+    for i in d:
+        f.writelines(str(i) + "\t" + str(d[i]) + "\n")
+    f.close()
